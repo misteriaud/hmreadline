@@ -1,0 +1,3 @@
+[submodule "libmemory"]
+	path = libmemory
+	url = https://github.com/misteriaud/libmemory.git
