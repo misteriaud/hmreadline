@@ -11,6 +11,7 @@ void display_cursor(int x)
 	write(STDOUT_FILENO, "\x1b[1;", 4);
 	write(STDOUT_FILENO, num, i);
 	write(STDOUT_FILENO, "H", 1);
+	free(num);
 }
 
 void disableRawMode(t_termios *origin) {
@@ -37,12 +38,11 @@ void enableRawMode(t_termios *origin) {
 
 int	add_letter(unsigned char c, t_line *line)
 {
-	t_letter *curr;
-	size_t		i;
-	t_letter *new;
+	t_letter	*curr;
+	int			i;
+	t_letter	*new;
 
 	i = 0;
-	// printf("\npos : %ld\n", line->pos);
 	curr = line->first;
 	while (curr && curr->next && ++i < line->pos)
 		curr = curr->next;
@@ -64,6 +64,39 @@ int	add_letter(unsigned char c, t_line *line)
 	return (1);
 }
 
+void remove_letter(t_line *line, char c)
+{
+	t_letter *curr;
+	t_letter *to_remove;
+	int	 i;
+	int pos;
+
+	i = 0;
+	pos = line->pos;
+	if (c == 127)
+		pos--;
+	if (pos < 0 || pos >= line->len || !line->first)
+		return ;
+	if (!pos)
+	{
+		to_remove = line->first;
+		line->first = to_remove->next;
+		xfree(to_remove, LETTER_GROUP);
+	}
+	else
+	{
+		curr = line->first;
+		while (curr && ++i < pos)
+			curr = curr->next;
+		to_remove = curr->next;
+		curr->next = to_remove->next;
+		xfree(to_remove, LETTER_GROUP);
+	}
+	if (c == 127)
+		line->pos--;
+	line->len--;
+}
+
 void display_line(t_line *line)
 {
 	t_letter *curr;
@@ -72,7 +105,7 @@ void display_line(t_line *line)
 
 	i = -1;
 	curr = line->first;
-	if (!xmalloc(&str, line->len + 1, 1))
+	if (!curr || !xmalloc(&str, line->len + 1, 1))
 		return ;
 	while (curr)
 	{
@@ -80,8 +113,25 @@ void display_line(t_line *line)
 		curr = curr->next;
 	}
 	write(STDOUT_FILENO, str, line->len);
-	// printf("pos: %ld\n", line->pos);
 	xfree(line, 1);
+}
+
+char *get_line(t_line *line)
+{
+	t_letter *curr;
+	int	 i;
+	char *str;
+
+	i = -1;
+	curr = line->first;
+	if (!xmalloc(&str, line->len + 1, 1))
+		return (NULL);
+	while (curr)
+	{
+		str[++i] = curr->c;
+		curr = curr->next;
+	}
+	return (str);
 }
 
 char *xreadline(char *(*prefix)(void), int history_fd)
@@ -106,10 +156,15 @@ char *xreadline(char *(*prefix)(void), int history_fd)
 			if (seq[0] == '[' && seq[1] == 'D' && line.pos > 0)
 				line.pos--;
 		}
+		else if (c == 127)
+			remove_letter(&line, c);
+		else if (c == 126)
+			remove_letter(&line, c);
 		else if (!add_letter(c, &line))
 			return (0);
 		display_line(&line);
 		display_cursor(line.pos);
 	}
-	return ("");
+	editorRefreshScreen(line.pos);
+	return (get_line(&line));
 }

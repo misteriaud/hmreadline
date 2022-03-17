@@ -16,9 +16,9 @@ typedef struct s_letter {
 
 typedef struct s_line {
 	t_letter	*first;
-	size_t		pos;
+	int			pos;
 	int			offset;
-	size_t		len;
+	int			len;
 }				t_line;
 
 char *xreadline(char *(*prefix)(void), int history_fd);

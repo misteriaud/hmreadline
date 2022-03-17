@@ -8,5 +8,6 @@ char *get_cwd()
 int main(void)
 {
 	printf("%s\n", xreadline(&get_cwd, 0));
+	xfree_all();
 	return 0;
 }

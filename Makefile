@@ -24,9 +24,8 @@ libmemory.a: libmemory
 	make -C libmemory
 	mv libmemory/libmemory.a .
 
-$(TESTNAME): libmemory.a $(OBJS) $(SCRS_TEST)
-	@echo "// UNIT_TESTING LOADING //"
-	@$(CC) $(FLAGS) -I$(HDRS) $(SCRS_TEST) $(OBJS) -L. -lmemory -o $@
+$(TESTNAME): $(NAME) libmemory.a $(SCRS_TEST)
+	$(CC) $(FLAGS) -I$(HDRS) $(SCRS_TEST) -L. -lmemory -lhmreadline -o $@
 	@./$(TESTNAME)
 
 clean:
