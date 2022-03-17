@@ -2,3 +2,4 @@
 libhmreadline.a
 libmemory.a
 unit_test
+.vscode

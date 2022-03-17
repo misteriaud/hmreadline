@@ -124,6 +124,7 @@ char *get_line(t_line *line)
 
 	i = -1;
 	curr = line->first;
+	str = NULL;
 	if (!xmalloc(&str, line->len + 1, 1))
 		return (NULL);
 	while (curr)
@@ -138,12 +139,17 @@ char *xreadline(char *(*prefix)(void), int history_fd)
 {
 	t_termios		origin;
 	t_line			line;
+	char			**history;
 	unsigned char	c;
 
 	(void)prefix;
-	(void)history_fd;
+	history = NULL;
+	if (history_fd > 0)
+		history = parse_history(history_fd);
+	(void)history;
 	line.first = NULL;
 	line.pos = 0;
+	line.len = 0;
 	enableRawMode(&origin);
 	while (read(STDIN_FILENO, &c, 1) == 1 && c != 10) {
 		editorRefreshScreen(line.pos);

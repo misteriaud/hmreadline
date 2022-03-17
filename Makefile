@@ -3,7 +3,7 @@ TESTNAME=unit_test
 SCRS_TEST=.unit_testing/main.c
 SRCSDIR=srcs
 OBJSDIR=objs
-SRCS=xreadline.c ft_itoa.c
+SRCS=xreadline.c ft_itoa.c parse_history.c
 OBJS=$(SRCS:%.c=$(OBJSDIR)/%.o)
 CC = gcc
 FLAGS = -Wall -Wextra -Werror -g
@@ -26,7 +26,7 @@ libmemory.a: libmemory
 
 $(TESTNAME): $(NAME) libmemory.a $(SCRS_TEST)
 	$(CC) $(FLAGS) -I$(HDRS) $(SCRS_TEST) -L. -lmemory -lhmreadline -o $@
-	@./$(TESTNAME)
+	# @./$(TESTNAME)
 
 clean:
 	rm -rf ${OBJSDIR}

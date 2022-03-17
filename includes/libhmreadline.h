@@ -8,6 +8,8 @@
 typedef struct termios t_termios;
 #define CTRL_KEY(q) ((q) & 0x1f)
 #define LETTER_GROUP 1
+#define PARSING_GROUP 2
+#define BUFFER_SIZE 4096
 
 typedef struct s_letter {
 	unsigned char c;
@@ -22,4 +24,5 @@ typedef struct s_line {
 }				t_line;
 
 char *xreadline(char *(*prefix)(void), int history_fd);
+char **parse_history(int history_fd);
 char	*ft_itoa(int n);
