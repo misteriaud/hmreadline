@@ -30,7 +30,7 @@ int main(void)
 		cmd = xreadline(&get_cwd, fd_history);
 		if (!cmd || !*cmd)
 			break;
-		printf("%s\n", cmd);
+		printf("\n%s\n", cmd);
 		write(fd_history, cmd, ft_strlen(cmd));
 		write(fd_history, "\n", 1);
 		close(fd_history);

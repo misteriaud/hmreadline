@@ -12,31 +12,41 @@ int ft_strlen(char *s)
 	return (i);
 }
 
-void display_cursor(t_line *line)
+void move_cursor(t_line *line, int direction)
 {
-	char *num;
-	int	i = 0;
 
-	num = ft_itoa(line->pos + 1 + ft_strlen(line->prefix) + 3);
-	while (num[i])
-		i++;
-	write(STDOUT_FILENO, "\x1b[1;", 4);
-	write(STDOUT_FILENO, num, i);
-	write(STDOUT_FILENO, "H", 1);
-	free(num);
+	if (direction == -1)
+		write(STDOUT_FILENO, "\x1b[1D", 4);
+	else
+		write(STDOUT_FILENO, "\x1b[1C", 4);
+	line->pos += direction;
+
+	// char *num;
+	// int	i = 0;
+
+	// num = ft_itoa(line->pos + 1 + ft_strlen(line->prefix) + 3);
+	// while (num[i])
+	// 	i++;
+	// write(STDOUT_FILENO, "\x1b[1;", 4);
+	// write(STDOUT_FILENO, num, i);
+	// write(STDOUT_FILENO, "H", 1);
+	// free(num);
 }
 
 void disableRawMode(t_termios *origin) {
   tcsetattr(STDIN_FILENO, TCSAFLUSH, origin);
 }
 
-void editorRefreshScreen(t_line *line) {
-	write(STDOUT_FILENO, "\x1b[?25l", 6);
-	// write(STDOUT_FILENO, "\x1b[2K", 4);
-	write(STDOUT_FILENO, "\x1b[2J", 4);
-	display_cursor(line);
-	write(STDOUT_FILENO, "\x1b[H", 3);
-	write(STDOUT_FILENO, "\x1b[?25h", 6);
+void editorRefreshScreen() {
+	// write(STDOUT_FILENO, "\x1b[?25l", 6); // hide cursor
+	write(STDOUT_FILENO, "\033[s", 3); // save cursor position
+	write(STDOUT_FILENO, "\x1b[2K", 4); //clean line
+	write(STDOUT_FILENO, "\r", 1); //put the cursor at the beging
+	write(STDOUT_FILENO, "\033[u", 3); // call cursor position
+	// write(STDOUT_FILENO, "\x1b[2J", 4);
+	// display_cursor(line);
+	// write(STDOUT_FILENO, "\x1b[H", 3);
+	// write(STDOUT_FILENO, "\x1b[?25h", 6); // show cursor
 }
 
 void enableRawMode(t_termios *origin) {
@@ -72,7 +82,7 @@ int	add_letter(unsigned char c, t_line *line)
 		new->next = curr;
 		line->first = new;
 	}
-	line->pos++;
+	// line->pos++;
 	line->len++;
 	return (1);
 }
@@ -106,29 +116,50 @@ void remove_letter(t_line *line, char c)
 		xfree(to_remove, LETTER_GROUP);
 	}
 	if (c == 127)
-		line->pos--;
+		move_cursor(line, -1);
 	line->len--;
+}
+
+void print_prefix(t_line *line)
+{
+	int to_right;
+
+	to_right = ft_strlen(line->prefix);
+	write(STDOUT_FILENO, line->prefix, to_right);
+	to_right += 3;
+	write(STDOUT_FILENO, " > ", 3);
+	// while (to_right <= 0)
+	// {
+	// 	write(STDOUT_FILENO, "\x1b[1C", 3);
+	// 	to_right--;
+	// }
 }
 
 void display_line(t_line *line)
 {
 	t_letter *curr;
 	int	 i;
+	int	j;
 	char *str;
 
 	i = -1;
-	write(STDOUT_FILENO, line->prefix, ft_strlen(line->prefix));
-	write(STDOUT_FILENO, " > ", 3);
+	write(STDOUT_FILENO, "\x1b[0K", 4); //clean until end of line
 	i = -1;
+	j = -1;
 	curr = line->first;
-	if (!curr || !xmalloc(&str, line->len + 1, 1))
+	if (!curr || !xmalloc(&str, line->len + 1 - line->pos, 1))
 		return ;
+	while (curr && ++i < line->pos)
+		curr = curr->next;
 	while (curr)
 	{
-		str[++i] = curr->c;
+		str[++j] = curr->c;
 		curr = curr->next;
 	}
-	write(STDOUT_FILENO, str, line->len);
+	line->pos += ft_strlen(str);
+	// printf("\nto print(at pos %d): %s\n",line->pos, str);
+	write(STDOUT_FILENO, str, line->len + 1 - line->pos);
+	// write(STDOUT_FILENO, "\033[u", 3); // call cursor position
 	xfree(line, 1);
 }
 
@@ -233,9 +264,9 @@ int key_handler(char c, t_line *line, char **history)
 		if (seq[0] == '[' && seq[1] == 'B')
 			set_autocomp(line, history, next);
 		if (seq[0] == '[' && seq[1] == 'C' && line->pos < line->len)
-			line->pos++;
+			move_cursor(line, 1);
 		if (seq[0] == '[' && seq[1] == 'D' && line->pos > 0)
-			line->pos--;
+			move_cursor(line, -1);
 	}
 	else if (c == 127)
 		remove_letter(line, c);
@@ -245,6 +276,7 @@ int key_handler(char c, t_line *line, char **history)
 		return (0);
 	return (1);
 }
+
 
 char *xreadline(char *(*prefix)(void), int history_fd)
 {
@@ -263,15 +295,13 @@ char *xreadline(char *(*prefix)(void), int history_fd)
 	line.len = 0;
 	line.history_index = -1;
 	enableRawMode(&origin);
+	print_prefix(&line);
 	while (read(STDIN_FILENO, &c, 1) == 1 && c != 10) {
-		editorRefreshScreen(&line);
 		if (!key_handler(c, &line, history))
 			return (0);
 		display_line(&line);
-		set_autocomp(&line, history, last);
-		display_autocomp(&line, history);
-		display_cursor(&line);
+		// set_autocomp(&line, history, last);
+		// display_autocomp(&line, history);
 	}
-	editorRefreshScreen(&line);
 	return (get_line(&line));
 }
