@@ -83,6 +83,7 @@ int	add_letter(unsigned char c, t_line *line)
 		line->first = new;
 	}
 	// line->pos++;
+	line->letter_added = 1;
 	line->len++;
 	return (1);
 }
@@ -143,6 +144,12 @@ void display_line(t_line *line)
 	char *str;
 
 	i = -1;
+	if (line->cursor_move)
+	{
+		line->cursor_move = 0;
+		return ;
+	}
+	write(STDOUT_FILENO, "\x1b[s", 3);
 	write(STDOUT_FILENO, "\x1b[0K", 4); //clean until end of line
 	i = -1;
 	j = -1;
@@ -156,9 +163,14 @@ void display_line(t_line *line)
 		str[++j] = curr->c;
 		curr = curr->next;
 	}
-	line->pos += ft_strlen(str);
-	// printf("\nto print(at pos %d): %s\n",line->pos, str);
 	write(STDOUT_FILENO, str, line->len + 1 - line->pos);
+	write(STDOUT_FILENO, "\x1b[ur", 3);
+	if (line->letter_added)
+	{
+		move_cursor(line, 1);
+		line->letter_added = 0;
+	}
+	// printf("\nto print(at pos %d): %s\n",line->pos, str);
 	// write(STDOUT_FILENO, "\033[u", 3); // call cursor position
 	xfree(line, 1);
 }
@@ -264,9 +276,15 @@ int key_handler(char c, t_line *line, char **history)
 		if (seq[0] == '[' && seq[1] == 'B')
 			set_autocomp(line, history, next);
 		if (seq[0] == '[' && seq[1] == 'C' && line->pos < line->len)
+		{
 			move_cursor(line, 1);
+			line->cursor_move = 1;
+		}
 		if (seq[0] == '[' && seq[1] == 'D' && line->pos > 0)
+		{
 			move_cursor(line, -1);
+			line->cursor_move = 1;
+		}
 	}
 	else if (c == 127)
 		remove_letter(line, c);
@@ -293,6 +311,8 @@ char *xreadline(char *(*prefix)(void), int history_fd)
 	line.prefix = prefix();
 	line.pos = 0;
 	line.len = 0;
+	line.cursor_move = 0;
+	line.letter_added = 0;
 	line.history_index = -1;
 	enableRawMode(&origin);
 	print_prefix(&line);

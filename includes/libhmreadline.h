@@ -29,6 +29,8 @@ typedef struct s_line {
 	int			pos;
 	int			offset;
 	int			len;
+	int			cursor_move;
+	int			letter_added;
 	int			history_index;
 }				t_line;
 
