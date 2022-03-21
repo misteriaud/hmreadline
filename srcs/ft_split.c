@@ -6,7 +6,7 @@
 /*   By: mriaud <mriaud@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2021/11/23 15:13:26 by mriaud            #+#    #+#             */
-/*   Updated: 2022/03/18 00:57:47 by mriaud           ###   ########.fr       */
+/*   Updated: 2022/03/21 18:37:50 by mriaud           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,8 +20,7 @@ static char	*ft_string(char *s, char c)
 	i = 0;
 	while (s[i] != c && s[i])
 		i++;
-	dest = malloc(i + 1);
-	if (!dest)
+	if(!xmalloc(&dest, i + 1, PARSING_GROUP))
 		return (NULL);
 	i = 0;
 	while (s[i] != c && s[i])
@@ -82,31 +81,19 @@ static int	str_count(char *s, char c)
 	return (count);
 }
 
-char	**ft_freetab(size_t count, char **dest)
-{
-	size_t	i;
-
-	i = 0;
-	while (i <= count)
-	{
-		free(dest[i]);
-		i++;
-	}
-	free(dest);
-	return (NULL);
-}
-
 char	**ft_split(char const *s, char c)
 {
 	char	**dest;
 	size_t	count;
 
 	count = str_count((char *)s, c);
-	dest = malloc(sizeof(*dest) * (count + 1));
-	if (!dest)
-		return (0);
+	if(!xmalloc(&dest, sizeof(*dest) * (count + 1), PARSING_GROUP))
+		return (NULL);
 	if (complete_tab((char *)s, c, dest) < count)
-		return (ft_freetab(count, dest));
-	dest[count] = NULL;
+	{
+		xfree_group(PARSING_GROUP);
+		return (NULL);
+	}
+		dest[count] = NULL;
 	return (dest);
 }

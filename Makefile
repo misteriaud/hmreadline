@@ -3,7 +3,7 @@ TESTNAME=unit_test
 SCRS_TEST=.unit_testing/main.c
 SRCSDIR=srcs
 OBJSDIR=objs
-SRCS=xreadline.c ft_itoa.c parse_history.c ft_split.c
+SRCS=xreadline.c parse_history.c ft_split.c autocomplete.c
 OBJS=$(SRCS:%.c=$(OBJSDIR)/%.o)
 CC = gcc
 FLAGS = -Wall -Wextra -Werror -g

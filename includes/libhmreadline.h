@@ -36,5 +36,9 @@ typedef struct s_line {
 
 char *xreadline(char *(*prefix)(void), int history_fd);
 char **parse_history(int history_fd);
-char	*ft_itoa(int n);
 char	**ft_split(char const *s, char c);
+
+int history_match(t_line *line, char *history_line);
+void set_autocomp(t_line *line, char **history, int prevnext);
+void display_autocomp(t_line *line, char **history);
+
