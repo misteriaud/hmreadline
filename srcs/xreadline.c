@@ -1,11 +1,23 @@
 #include "libhmreadline.h"
 
-void display_cursor(int x)
+int ft_strlen(char *s)
+{
+	int i;
+
+	i = 0;
+	if (!s)
+		return (i);
+	while (s[i])
+		i++;
+	return (i);
+}
+
+void display_cursor(t_line *line)
 {
 	char *num;
 	int	i = 0;
 
-	num = ft_itoa(x + 1);
+	num = ft_itoa(line->pos + 1 + ft_strlen(line->prefix) + 3);
 	while (num[i])
 		i++;
 	write(STDOUT_FILENO, "\x1b[1;", 4);
@@ -18,10 +30,11 @@ void disableRawMode(t_termios *origin) {
   tcsetattr(STDIN_FILENO, TCSAFLUSH, origin);
 }
 
-void editorRefreshScreen(int pos) {
+void editorRefreshScreen(t_line *line) {
 	write(STDOUT_FILENO, "\x1b[?25l", 6);
+	// write(STDOUT_FILENO, "\x1b[2K", 4);
 	write(STDOUT_FILENO, "\x1b[2J", 4);
-	display_cursor(pos);
+	display_cursor(line);
 	write(STDOUT_FILENO, "\x1b[H", 3);
 	write(STDOUT_FILENO, "\x1b[?25h", 6);
 }
@@ -32,7 +45,7 @@ void enableRawMode(t_termios *origin) {
 	tcgetattr(STDIN_FILENO, origin);
 	custom = *origin;
 	custom.c_lflag &= ~(ECHO | ICANON);
-	custom.c_oflag &= ~(OPOST);
+	// custom.c_oflag &= ~(OPOST);
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &custom);
 }
 
@@ -104,6 +117,9 @@ void display_line(t_line *line)
 	char *str;
 
 	i = -1;
+	write(STDOUT_FILENO, line->prefix, ft_strlen(line->prefix));
+	write(STDOUT_FILENO, " > ", 3);
+	i = -1;
 	curr = line->first;
 	if (!curr || !xmalloc(&str, line->len + 1, 1))
 		return ;
@@ -135,42 +151,127 @@ char *get_line(t_line *line)
 	return (str);
 }
 
+
+int history_match(t_line *line, char *history_line)
+{
+	int	i;
+	t_letter *curr;
+
+	i = 0;
+	curr = line->first;
+	while(curr)
+	{
+		if (curr->c != history_line[i])
+			return (0);
+		curr = curr->next;
+		i++;
+	}
+	if (!curr)
+		return (1);
+	return (0);
+}
+
+void set_autocomp(t_line *line, char **history, int prevnext)
+{
+	int i;
+
+	if (!history || !*history || !line->first
+		|| (line->history_index >= 0 && history_match(line, history[line->history_index]) && !prevnext))
+		return ;
+	i = line->history_index;
+	if (!prevnext || line->history_index < 0)
+	{
+		i = 0;
+		while (history[i])
+			i++;
+		i--;
+		line->history_index = -1;
+	}
+	if (prevnext)
+		i += prevnext;
+	while (i >= 0)
+	{
+		if (history[i] && history_match(line, history[i]))
+		{
+			line->history_index = i;
+			return ;
+		}
+		i--;
+	}
+}
+
+void display_autocomp(t_line *line, char **history)
+{
+	int	i;
+	t_letter *curr;
+
+	if (!history || line->history_index < 0 || !line->first)
+		return ;
+	i = 0;
+	curr = line->first;
+	while(curr)
+	{
+		curr = curr->next;
+		i++;
+	}
+	write(STDOUT_FILENO, "\033[0;90m", 7);
+	while (history[line->history_index][i])
+		write(STDOUT_FILENO, &history[line->history_index][i++], 1);
+	write(STDOUT_FILENO, "\033[0m", 4);
+}
+
+int key_handler(char c, t_line *line, char **history)
+{
+	if (c == '\x1b') {
+		char seq[2];
+		if (read(STDIN_FILENO, &seq[0], 1) != 1)
+			return (0);
+		if (read(STDIN_FILENO, &seq[1], 1) != 1)
+			return (0);
+		if (seq[0] == '[' && seq[1] == 'A')
+			set_autocomp(line, history, prev);
+		if (seq[0] == '[' && seq[1] == 'B')
+			set_autocomp(line, history, next);
+		if (seq[0] == '[' && seq[1] == 'C' && line->pos < line->len)
+			line->pos++;
+		if (seq[0] == '[' && seq[1] == 'D' && line->pos > 0)
+			line->pos--;
+	}
+	else if (c == 127)
+		remove_letter(line, c);
+	else if (c == 126)
+		remove_letter(line, c);
+	else if (!add_letter(c, line))
+		return (0);
+	return (1);
+}
+
 char *xreadline(char *(*prefix)(void), int history_fd)
 {
 	t_termios		origin;
 	t_line			line;
 	char			**history;
 	unsigned char	c;
+	// static int		vert_pos;
 
-	(void)prefix;
 	history = NULL;
 	if (history_fd > 0)
 		history = parse_history(history_fd);
-	(void)history;
 	line.first = NULL;
+	line.prefix = prefix();
 	line.pos = 0;
 	line.len = 0;
+	line.history_index = -1;
 	enableRawMode(&origin);
 	while (read(STDIN_FILENO, &c, 1) == 1 && c != 10) {
-		editorRefreshScreen(line.pos);
-		if (c == '\x1b') {
-			char seq[2];
-			if (read(STDIN_FILENO, &seq[0], 1) != 1) break ;
-			if (read(STDIN_FILENO, &seq[1], 1) != 1) break ;
-			if (seq[0] == '[' && seq[1] == 'C' && line.pos < line.len)
-				line.pos++;
-			if (seq[0] == '[' && seq[1] == 'D' && line.pos > 0)
-				line.pos--;
-		}
-		else if (c == 127)
-			remove_letter(&line, c);
-		else if (c == 126)
-			remove_letter(&line, c);
-		else if (!add_letter(c, &line))
+		editorRefreshScreen(&line);
+		if (!key_handler(c, &line, history))
 			return (0);
 		display_line(&line);
-		display_cursor(line.pos);
+		set_autocomp(&line, history, last);
+		display_autocomp(&line, history);
+		display_cursor(&line);
 	}
-	editorRefreshScreen(line.pos);
+	editorRefreshScreen(&line);
 	return (get_line(&line));
 }

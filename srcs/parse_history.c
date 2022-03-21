@@ -6,7 +6,7 @@
 /*   By: mriaud <mriaud@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/03/17 21:09:01 by mriaud            #+#    #+#             */
-/*   Updated: 2022/03/17 21:27:51 by mriaud           ###   ########.fr       */
+/*   Updated: 2022/03/18 00:57:05 by mriaud           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -72,7 +72,7 @@ char	*get_file(int fd, int *nl)
 
 char **parse_history(int history_fd)
 {
-	char **history;
+	char 	**history;
 	char	*file;
 	int		nl;
 
@@ -83,6 +83,6 @@ char **parse_history(int history_fd)
 		xfree_group(PARSING_GROUP);
 		return (NULL);
 	}
-	printf("%s\n", file);
+	history = ft_split(file, '\n');
 	return (history);
 }
